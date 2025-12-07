@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ANOTA</title> <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff9600">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        duoVerde: '#58cc02', duoVerdeShadow: '#46a302',
+                        duoRojo: '#ff4b4b', duoRojoShadow: '#d42c2c',
+                        duoAzul: '#1cb0f6', duoAzulShadow: '#1899d6',
+                        duoAmarillo: '#ffc800', duoAmarilloShadow: '#e5b400',
+                        duoMorado: '#ce82ff', duoMoradoShadow: '#a568cc',
+                        duoNaranja: '#ff9600', duoNaranjaShadow: '#cc7800',
+                        duoRosa: '#ff86d4', duoRosaShadow: '#d16eb0',
+                        duoGris: '#e5e5e5', duoFondo: '#f0f2f5', duoTexto: '#4b4b4b',
+                        duoDorado: '#FFD700', duoDoradoShadow: '#DAA520'
+                    },
+                    fontFamily: { sans: ['Nunito', 'Arial Rounded MT Bold', 'sans-serif'], }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Nunito', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .btn-3d { transition: all 0.1s; transform: translateY(0); border-bottom-width: 4px; }
+        .btn-3d:active { transform: translateY(2px); border-bottom-width: 0px; margin-top: 2px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-duoFondo text-duoTexto h-screen flex flex-col overflow-hidden">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-duoFondo z-[10000] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="animate-spin text-6xl text-duoNaranja mb-4"><i class="fas fa-circle-notch"></i></div>
+        <h2 class="text-2xl font-extrabold text-gray-600">ANOTA</h2> <p class="text-xs text-gray-400 mt-2">Conectando...</p>
+    </div>
+
+    <div id="cloud-status" class="fixed top-4 right-4 z-[9999] bg-white px-3 py-1 rounded-full shadow-md text-xs font-bold text-gray-400 border border-gray-200 flex items-center gap-2 hidden"></div>
+
+    <button id="btn-install-pwa" onclick="instalarAppManual()" class="fixed bottom-6 left-6 z-50 bg-white text-gray-400 border-2 border-gray-300 w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 hover:text-duoNaranja hover:border-duoNaranja" title="Descargar App">
+        <i class="fas fa-download text-xs"></i>
+    </button>
+
+    <header class="bg-white border-b-2 border-duoGris p-4 flex justify-between items-center z-10 shadow-sm">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 bg-duoNaranja rounded-xl flex items-center justify-center text-white text-xl shadow-sm">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold text-gray-700 leading-tight">ANOTA</h1> <span class="text-[10px] font-bold text-duoRosa bg-pink-50 px-2 py-0.5 rounded-full uppercase tracking-widest">Socio</span>
+            </div>
+        </div>
+        <button onclick="saveData(true)" class="bg-gray-100 p-2 rounded-xl text-gray-400 hover:text-duoAzul transition-colors active:scale-95"><i class="fas fa-sync-alt"></i></button>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-4 relative pb-32 custom-scroll" id="main-container">
+        
+        <div class="bg-white p-5 rounded-[2rem] border-2 border-duoGris mb-6 shadow-sm animate-fade-in">
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Categoría</label>
+                <div class="grid grid-cols-3 gap-2" id="gastos-cat-buttons"></div>
+            </div>
+
+            <div class="space-y-4">
+                <div id="gastos-subcat-container" class="hidden">
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2" id="gastos-subcat-label">Lugar</label>
+                    <select id="gastos-subcat" class="w-full bg-duoFondo border-2 border-duoGris rounded-xl px-4 py-3 font-bold text-gray-700 outline-none"></select>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Medio de Pago</label>
+                    <div class="flex gap-2">
+                        <button onclick="setMetodoPagoGasto('Efectivo')" class="pago-btn flex-1 py-3 rounded-xl border-2 border-duoGris text-gray-500 font-bold text-xs hover:bg-yellow-50" data-pago="Efectivo">Efectivo</button>
+                        <button onclick="setMetodoPagoGasto('Mercado Pago')" class="pago-btn flex-1 py-3 rounded-xl border-2 border-duoGris text-gray-500 font-bold text-xs hover:bg-blue-50" data-pago="Mercado Pago">MP</button>
+                        <button onclick="setMetodoPagoGasto('Cuenta DNI')" class="pago-btn flex-1 py-3 rounded-xl border-2 border-duoGris text-gray-500 font-bold text-xs hover:bg-green-50" data-pago="Cuenta DNI">DNI</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Monto Total ($)</label>
+                    <input type="number" id="gastos-monto" class="w-full bg-duoFondo border-2 border-duoGris rounded-xl px-4 py-3 font-bold text-gray-700 text-3xl outline-none focus:border-duoNaranja placeholder-gray-300" placeholder="0.00">
+                </div>
+            </div>
+
+            <div id="gastos-stock-section" class="mt-6 mb-4 bg-green-50 p-4 rounded-2xl border-2 border-green-100">
+                <label class="block text-xs font-bold text-green-600 uppercase mb-2 flex items-center gap-2">
+                    <span class="bg-green-200 text-green-700 rounded-full w-5 h-5 flex items-center justify-center text-[10px]"><i class="fas fa-plus"></i></span>
+                    Detallar Items (Suma al Stock)
+                </label>
+                
+                <div class="flex flex-col gap-3 mb-2">
+                    <div class="relative w-full">
+                        <select id="gastos-ing-select" class="w-full h-12 bg-white border-2 border-green-200 rounded-xl px-3 font-bold text-gray-600 text-sm outline-none focus:border-green-400 appearance-none" onchange="actualizarUnidadGasto()">
+                            <option value="">Seleccionar Ingrediente...</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-green-300 pointer-events-none"></i>
+                    </div>
+
+                    <div class="flex gap-2 h-14">
+                        <input type="number" id="gastos-ing-cant" placeholder="Cant." class="flex-1 bg-white border-2 border-green-200 rounded-xl font-bold text-center text-xl outline-none focus:border-green-400 text-gray-700 placeholder-gray-300">
+                        
+                        <div id="gastos-unit-display" class="w-16 bg-white border-2 border-duoVerde rounded-xl flex items-center justify-center font-black text-duoVerde text-xl shadow-sm select-none">
+                            -
+                        </div>
+                        
+                        <button onclick="agregarItemGasto()" class="w-16 bg-green-500 border-green-600 text-white rounded-xl font-bold btn-3d text-3xl flex items-center justify-center shadow-sm active:shadow-none active:mt-1 pb-1">
+                            +
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="gastos-lista-items" class="space-y-2 mt-3"></div>
+            </div>
+
+            <button onclick="registrarGasto()" class="w-full bg-duoNaranja border-duoNaranjaShadow text-white px-6 py-4 rounded-xl font-bold btn-3d text-xl shadow-lg flex items-center justify-center gap-2 mt-2 hover:brightness-110 active:scale-[0.98]">
+                REGISTRAR GASTO <i class="fas fa-paper-plane ml-1"></i>
+            </button>
+        </div>
+
+        <h3 class="text-xl font-extrabold text-gray-700 mb-4 px-2">Historial Reciente</h3>
+        <div class="bg-white rounded-[2rem] border-2 border-duoGris p-4 shadow-sm min-h-[200px]" id="gastos-historial">
+            <div class="text-center text-gray-400 py-10 flex flex-col items-center">
+                <i class="fas fa-spinner fa-spin mb-2"></i> Cargando historial...
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        // --- 1. CONFIGURACION SUPABASE ---
+        const { createClient } = supabase;
+        const SUPABASE_URL = 'https://decupczchvuugmjssijj.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_UfapIhDDqsb4n4BPtOd4VA_zb8GCYxA'; 
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // --- 2. VARIABLES Y ESTADO ---
+        const DEFAULT_DATA = {
+            alacena: {}, compuestos: [], recetas: [],
+            finanzas: { cuentas: { "Efectivo": 0, "Mercado Pago": 0, "Cuenta DNI": 0, "Bull Market": 0, "Otros": 0 }, movimientos: [] },
+            gastos: [], stock: {}, planner: {}
+        };
+
+        window.DB = JSON.parse(JSON.stringify(DEFAULT_DATA));
+        
+        let saveTimeout = null;
+        let deferredPrompt; 
+        window.tempGastoItems = [];
+        window.catGastosActual = null;
+        window.metodoPagoGasto = null;
+        window.usuarioActualGasto = 'Partner'; 
+        
+        window.SUBCATEGORIAS = { 
+            "Limpieza": ["Día", "Carrefour", "Chino", "Otros"], 
+            "Animales": [], 
+            "Supermercado": ["Día", "Chino", "Carrefour"], 
+            "Materia Prima": ["Verdulería", "Carne", "Otros"], 
+            "Otros": [], 
+            "Impuestos": [] 
+        };
+
+        // --- 3. INICIO ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            initUI(); 
+            await cargarDatosNube();
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('Error SW', err));
+            }
+        });
+
+        // --- LOGICA INSTALACION APP ---
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); 
+            deferredPrompt = e;
+            const btn = document.getElementById('btn-install-pwa');
+            // Cambiar estilo para avisar que está listo
+            btn.classList.remove('text-gray-400', 'border-gray-300');
+            btn.classList.add('text-white', 'bg-duoNaranja', 'border-duoNaranjaShadow', 'animate-bounce');
+        });
+
+        window.instalarAppManual = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                // Resetear botón
+                const btn = document.getElementById('btn-install-pwa');
+                btn.classList.add('text-gray-400', 'border-gray-300');
+                btn.classList.remove('text-white', 'bg-duoNaranja', 'border-duoNaranjaShadow', 'animate-bounce');
+            } else {
+                alert("Para instalar: \nEn iPhone: Toca 'Compartir' y luego 'Agregar a Inicio'.\nEn Android: Toca los 3 puntos y 'Instalar aplicación'.");
+            }
+        };
+
+        // --- SYNC ---
+        async function cargarDatosNube() {
+            try {
+                const { data, error } = await supabaseClient.from('duokitchen').select('content').eq('id', 'casa_principal').single();
+                if (data && data.content) {
+                    window.DB = { ...DEFAULT_DATA, ...data.content };
+                    Object.keys(window.DB.alacena).forEach(k => {
+                        if(typeof window.DB.alacena[k] === 'number') window.DB.alacena[k] = { precio: window.DB.alacena[k], unidad: 'u', cantRef: 1 };
+                    });
+                }
+                renderUICompleta();
+                document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none');
+            } catch (e) { 
+                console.error(e);
+                alert("Error cargando datos.");
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+        }
+
+        window.saveData = async function(forceRefresh = false) {
+            const status = document.getElementById('cloud-status');
+            status.classList.remove('hidden');
+            status.innerHTML = `<div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div> ...`;
+            
+            if (saveTimeout) clearTimeout(saveTimeout);
+            
+            saveTimeout = setTimeout(async () => {
+                try {
+                    const { data: currentData } = await supabaseClient.from('duokitchen').select('content').eq('id', 'casa_principal').single();
+                    if(currentData && currentData.content) {
+                        const nube = currentData.content;
+                        const finalDB = { ...nube, gastos: window.DB.gastos, stock: window.DB.stock, finanzas: window.DB.finanzas };
+                        window.DB = finalDB; 
+                    }
+                    await supabaseClient.from('duokitchen').upsert({ id: 'casa_principal', content: window.DB });
+                    status.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500"></div> Ok`;
+                    setTimeout(() => status.classList.add('hidden'), 2000);
+                    if(forceRefresh) renderUICompleta();
+                } catch (e) {
+                    console.error(e);
+                    status.innerHTML = `<div class="w-2 h-2 rounded-full bg-red-500"></div> Error`;
+                }
+            }, 500);
+        };
+
+        function initUI() { generarBotonesGastos(); }
+        function renderUICompleta() { renderSelectorIngredientes(); renderGastos(); }
+
+        function renderSelectorIngredientes() {
+            const s = document.getElementById('gastos-ing-select'); 
+            s.innerHTML='<option value="">Seleccionar Ingrediente...</option>';
+            const sortedKeys = Object.keys(window.DB.alacena).sort();
+            sortedKeys.forEach(n=>{ s.innerHTML+=`<option value="${n}">${n}</option>`; });
+        }
+
+        window.generarBotonesGastos = function() { 
+            const div = document.getElementById('gastos-cat-buttons'); 
+            if(!div) return; 
+            div.innerHTML = ''; 
+            ["Limpieza", "Animales", "Supermercado", "Materia Prima", "Otros", "Impuestos"].forEach(cat => { 
+                let icon="fa-tag"; 
+                if(cat==="Limpieza"){icon="fa-broom";} 
+                if(cat==="Animales"){icon="fa-paw";} 
+                if(cat==="Supermercado"){icon="fa-shopping-cart";} 
+                if(cat==="Materia Prima"){icon="fa-carrot";} 
+                if(cat==="Impuestos"){icon="fa-landmark";} 
+                div.innerHTML += `<button onclick="setGastoCategoria('${cat}')" class="cat-btn py-3 px-1 rounded-xl font-bold border-2 border-duoGris text-gray-500 hover:bg-gray-50 transition-all text-[10px] flex flex-col items-center gap-1" data-cat="${cat}"><i class="fas ${icon} text-lg"></i>${cat}</button>`; 
+            }); 
+        };
+
+        window.setGastoCategoria = function(cat) { 
+            window.catGastosActual = cat; 
+            document.querySelectorAll('.cat-btn').forEach(btn => { 
+                if(btn.dataset.cat===cat){
+                    btn.className="cat-btn py-3 px-1 rounded-xl font-bold border-2 border-duoNaranjaShadow bg-duoNaranja text-white transition-all text-[10px] flex flex-col items-center gap-1 transform scale-105 shadow-md";
+                } else {
+                    btn.className="cat-btn py-3 px-1 rounded-xl font-bold border-2 border-duoGris text-gray-500 hover:bg-gray-50 transition-all text-[10px] flex flex-col items-center gap-1";
+                } 
+            }); 
+            const subs = window.SUBCATEGORIAS[cat]; 
+            const c = document.getElementById('gastos-subcat-container'); 
+            if(subs && subs.length>0) { 
+                c.classList.remove('hidden'); 
+                document.getElementById('gastos-subcat').innerHTML=subs.map(s=>`<option>${s}</option>`).join(''); 
+            } else { c.classList.add('hidden'); }
+        };
+
+        window.setMetodoPagoGasto = function(m) {
+            window.metodoPagoGasto = m;
+            document.querySelectorAll('.pago-btn').forEach(btn => {
+                btn.className = "pago-btn flex-1 py-3 rounded-xl border-2 border-duoGris text-gray-500 font-bold text-xs hover:bg-gray-50 transition-all";
+                if(btn.dataset.pago === m) {
+                    if(m === 'Efectivo') btn.className = "pago-btn flex-1 py-3 rounded-xl border-2 border-yellow-400 bg-yellow-100 text-yellow-700 font-bold text-xs transition-all shadow-sm";
+                    else if(m === 'Mercado Pago') btn.className = "pago-btn flex-1 py-3 rounded-xl border-2 border-blue-400 bg-blue-100 text-blue-700 font-bold text-xs transition-all shadow-sm";
+                    else btn.className = "pago-btn flex-1 py-3 rounded-xl border-2 border-green-400 bg-green-100 text-green-700 font-bold text-xs transition-all shadow-sm";
+                }
+            });
+        }
+
+        window.actualizarUnidadGasto = function() {
+            const val = document.getElementById('gastos-ing-select').value;
+            const display = document.getElementById('gastos-unit-display');
+            if(val && window.DB.alacena[val]) {
+                display.textContent = window.DB.alacena[val].unidad || 'u';
+            } else { display.textContent = '-'; }
+        };
+
+        window.agregarItemGasto = function() {
+            const n = document.getElementById('gastos-ing-select').value;
+            const c = parseFloat(document.getElementById('gastos-ing-cant').value);
+            if(n && c > 0) {
+                window.tempGastoItems.push({n, c});
+                renderListaGastosItems();
+                document.getElementById('gastos-ing-cant').value = '';
+            }
+        };
+
+        window.renderListaGastosItems = function() {
+            const c = document.getElementById('gastos-lista-items');
+            c.innerHTML = '';
+            window.tempGastoItems.forEach((item, idx) => {
+                let unit = 'u';
+                if(window.DB.alacena[item.n]) unit = window.DB.alacena[item.n].unidad;
+                c.innerHTML += `<div class="flex justify-between items-center text-sm bg-white border border-green-200 rounded-lg px-3 py-2 shadow-sm animate-fade-in"><span class="font-bold text-gray-700">${item.n}</span><div class="flex items-center gap-3"><span class="font-extrabold text-duoVerde">${item.c} ${unit}</span><button onclick="tempGastoItems.splice(${idx},1); renderListaGastosItems()" class="text-red-400 hover:text-red-600 font-bold px-2">&times;</button></div></div>`;
+            });
+        };
+
+        window.registrarGasto = function() { 
+            const m = parseFloat(document.getElementById('gastos-monto').value); 
+            if(!m || !window.catGastosActual) return alert("Falta Monto o Categoría"); 
+            
+            const nuevoGasto = { 
+                id: Date.now(), 
+                fecha: new Date().toLocaleDateString(), 
+                categoria: window.catGastosActual, 
+                monto: m,
+                usuario: window.usuarioActualGasto,
+                items: [...window.tempGastoItems],
+                metodoPago: window.metodoPagoGasto
+            };
+            window.DB.gastos.push(nuevoGasto);
+            
+            if(window.metodoPagoGasto && window.DB.finanzas.cuentas[window.metodoPagoGasto] !== undefined) {
+                window.DB.finanzas.cuentas[window.metodoPagoGasto] -= m;
+                window.DB.finanzas.movimientos.push({
+                    fecha: new Date().toLocaleDateString(),
+                    tipo: 'gasto',
+                    origen: window.metodoPagoGasto, 
+                    destino: 'Gasto: ' + window.catGastosActual,
+                    monto: m,
+                    referencia: 'Compra Partner'
+                });
+            }
+
+            if(window.tempGastoItems.length > 0) {
+                window.tempGastoItems.forEach(item => {
+                    window.DB.stock[item.n] = (window.DB.stock[item.n] || 0) + item.c;
+                });
+            }
+
+            window.tempGastoItems = [];
+            renderListaGastosItems();
+            document.getElementById('gastos-monto').value=''; 
+            
+            saveData(true); 
+            alert("Gasto registrado.");
+        };
+
+        window.borrarGasto = function(id) {
+            const gastoIndex = window.DB.gastos.findIndex(g => g.id === id);
+            if (gastoIndex === -1) return;
+            const gasto = window.DB.gastos[gastoIndex];
+            const montoRefund = parseFloat(gasto.monto);
+            if(gasto.metodoPago && window.DB.finanzas.cuentas[gasto.metodoPago] !== undefined) {
+                window.DB.finanzas.cuentas[gasto.metodoPago] += montoRefund;
+                window.DB.finanzas.movimientos.push({
+                    fecha: new Date().toLocaleDateString(),
+                    tipo: 'ingreso', 
+                    destino: gasto.metodoPago,
+                    monto: montoRefund,
+                    referencia: 'Cancelación Gasto Partner'
+                });
+            }
+            if(gasto.items && gasto.items.length > 0) {
+                gasto.items.forEach(item => {
+                    if(window.DB.stock[item.n]) {
+                        window.DB.stock[item.n] = Math.max(0, window.DB.stock[item.n] - item.c);
+                    }
+                });
+            }
+            window.DB.gastos.splice(gastoIndex, 1);
+            saveData(true); 
+            alert(`Gasto eliminado. Se devolvió $${montoRefund} a billetera.`);
+        };
+
+        window.renderGastos = function() { 
+            const l = document.getElementById('gastos-historial'); 
+            l.innerHTML=''; 
+            const catColors = { 'Limpieza': 'bg-blue-500 border-blue-200', 'Mascotas': 'bg-orange-500 border-orange-200', 'Materia Prima': 'bg-green-500 border-green-200', 'Supermercado': 'bg-red-500 border-red-200', 'Otros': 'bg-gray-500 border-gray-200', 'Impuestos': 'bg-yellow-400 border-yellow-200' };
+            [...window.DB.gastos].reverse().forEach(g => { 
+                const colorClass = catColors[g.categoria] || 'bg-gray-500';
+                const userIcon = g.usuario === 'Partner' ? '<i class="fas fa-user-friends text-duoRosa bg-pink-100 rounded-full p-1 text-[10px]"></i>' : '<i class="fas fa-user-shield text-duoAzul bg-blue-100 rounded-full p-1 text-[10px]"></i>';
+                let itemsHtml = '';
+                if(g.items && g.items.length > 0) { itemsHtml = `<div class="text-xs text-gray-500 mt-1 bg-gray-50 p-1 rounded border border-gray-100 italic">Items: ${g.items.map(i=>`${i.n} (${i.c})`).join(', ')}</div>`; }
+                l.innerHTML += `<div class="flex justify-between items-start py-3 border-b border-gray-100 group animate-fade-in"><div class="flex items-start gap-3 flex-1"><div class="w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${colorClass}"></div><div class="w-full"><div class="font-bold text-gray-700 text-sm flex items-center gap-2">${g.categoria} ${userIcon}</div><div class="text-[10px] text-gray-300 font-mono">${g.fecha}</div>${itemsHtml}</div></div><div class="text-right flex flex-col items-end pl-2"><div class="font-extrabold text-gray-700 text-lg">$${g.monto}</div><button onclick="if(confirm('¿Borrar?')) borrarGasto(${g.id})" class="mt-1 bg-red-50 text-red-400 px-2 py-1 rounded text-[10px] font-bold border border-red-100 hover:bg-red-100 transition-colors"><i class="fas fa-trash"></i></button></div></div>`; 
+            }); 
+            if(window.DB.gastos.length === 0) { l.innerHTML = '<div class="text-center text-gray-300 py-10 italic">No hay gastos recientes</div>'; }
+        };
+    </script>
+</body>
+</html>

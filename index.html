@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ANOTA</title> <link rel="manifest" href="manifest.json">
+    <title>ANOTA</title>
+    
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ff9600">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -41,36 +43,63 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* Animación suave para nuevos items */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* Boton Flotante Instalar */
+        #btn-install-pwa {
+            position: fixed; bottom: 20px; right: 20px; z-index: 50;
+            background: #ff9600; color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-bottom: 4px solid #cc7800;
+            transition: transform 0.2s;
+        }
+        #btn-install-pwa:active { transform: translateY(4px); border-bottom: 0; }
     </style>
 </head>
 <body class="bg-duoFondo text-duoTexto h-screen flex flex-col overflow-hidden">
 
     <div id="loading-overlay" class="fixed inset-0 bg-duoFondo z-[10000] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="animate-spin text-6xl text-duoNaranja mb-4"><i class="fas fa-circle-notch"></i></div>
-        <h2 class="text-2xl font-extrabold text-gray-600">ANOTA</h2> <p class="text-xs text-gray-400 mt-2">Conectando...</p>
+        <h2 class="text-3xl font-extrabold text-gray-600 tracking-wider">ANOTA</h2>
+        <p class="text-xs text-gray-400 mt-2 font-bold italic">
+            <span class="text-duoNaranja font-black text-sm">A</span>mamos a 
+            <span class="text-duoNaranja font-black text-sm">N</span>uestro 
+            <span class="text-duoNaranja font-black text-sm">O</span>toño, 
+            <span class="text-duoNaranja font-black text-sm">T</span>ierno y 
+            <span class="text-duoNaranja font-black text-sm">A</span>migable
+        </p>
     </div>
 
     <div id="cloud-status" class="fixed top-4 right-4 z-[9999] bg-white px-3 py-1 rounded-full shadow-md text-xs font-bold text-gray-400 border border-gray-200 flex items-center gap-2 hidden"></div>
 
-    <button id="btn-install-pwa" onclick="instalarAppManual()" class="fixed bottom-6 left-6 z-50 bg-white text-gray-400 border-2 border-gray-300 w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 hover:text-duoNaranja hover:border-duoNaranja" title="Descargar App">
-        <i class="fas fa-download text-xs"></i>
+    <button id="btn-install-pwa" class="hidden rounded-2xl p-4 font-bold flex items-center gap-2 animate-bounce">
+        <i class="fas fa-download text-xl"></i>
+        <span class="text-sm">Instalar App</span>
     </button>
 
     <header class="bg-white border-b-2 border-duoGris p-4 flex justify-between items-center z-10 shadow-sm">
-        <div class="flex items-center gap-2">
-            <div class="w-10 h-10 bg-duoNaranja rounded-xl flex items-center justify-center text-white text-xl shadow-sm">
-                <i class="fas fa-receipt"></i>
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-duoNaranja rounded-2xl flex items-center justify-center shadow-md border-b-4 border-duoNaranjaShadow overflow-hidden p-1">
+                <img src="icon.png" alt="Logo ANOTA" class="w-full h-full object-contain drop-shadow-sm">
             </div>
-            <div>
-                <h1 class="text-xl font-extrabold text-gray-700 leading-tight">ANOTA</h1> <span class="text-[10px] font-bold text-duoRosa bg-pink-50 px-2 py-0.5 rounded-full uppercase tracking-widest">Socio</span>
+            <div class="flex flex-col">
+                <h1 class="text-2xl font-extrabold text-gray-700 leading-none">ANOTA</h1>
+                <p class="text-[10px] text-gray-400 font-bold italic leading-tight mt-1">
+                    <span class="text-duoNaranja font-black">A</span>mamos a 
+                    <span class="text-duoNaranja font-black">N</span>uestro 
+                    <span class="text-duoNaranja font-black">O</span>toño, 
+                    <span class="text-duoNaranja font-black">T</span>ierno y 
+                    <span class="text-duoNaranja font-black">A</span>migable
+                </p>
             </div>
         </div>
-        <button onclick="saveData(true)" class="bg-gray-100 p-2 rounded-xl text-gray-400 hover:text-duoAzul transition-colors active:scale-95"><i class="fas fa-sync-alt"></i></button>
+        <button onclick="saveData(true)" class="bg-gray-100 p-3 rounded-xl text-gray-400 hover:text-duoAzul transition-colors active:scale-95 shadow-sm border-2 border-gray-200"><i class="fas fa-sync-alt"></i></button>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-4 relative pb-32 custom-scroll" id="main-container">
+    <main class="flex-1 overflow-y-auto p-4 relative pb-24 custom-scroll" id="main-container">
         
         <div class="bg-white p-5 rounded-[2rem] border-2 border-duoGris mb-6 shadow-sm animate-fade-in">
             
@@ -106,25 +135,22 @@
                     Detallar Items (Suma al Stock)
                 </label>
                 
-                <div class="flex flex-col gap-3 mb-2">
-                    <div class="relative w-full">
-                        <select id="gastos-ing-select" class="w-full h-12 bg-white border-2 border-green-200 rounded-xl px-3 font-bold text-gray-600 text-sm outline-none focus:border-green-400 appearance-none" onchange="actualizarUnidadGasto()">
-                            <option value="">Seleccionar Ingrediente...</option>
+                <div class="flex gap-2 mb-2 items-stretch h-14"> <div class="flex-[2] relative">
+                        <select id="gastos-ing-select" class="w-full h-full bg-white border-2 border-green-200 rounded-xl px-3 font-bold text-gray-600 text-sm outline-none focus:border-green-400 appearance-none" onchange="actualizarUnidadGasto()">
+                            <option value="">Ingrediente...</option>
                         </select>
                         <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-green-300 pointer-events-none"></i>
                     </div>
-
-                    <div class="flex gap-2 h-14">
-                        <input type="number" id="gastos-ing-cant" placeholder="Cant." class="flex-1 bg-white border-2 border-green-200 rounded-xl font-bold text-center text-xl outline-none focus:border-green-400 text-gray-700 placeholder-gray-300">
-                        
-                        <div id="gastos-unit-display" class="w-16 bg-white border-2 border-duoVerde rounded-xl flex items-center justify-center font-black text-duoVerde text-xl shadow-sm select-none">
-                            -
-                        </div>
-                        
-                        <button onclick="agregarItemGasto()" class="w-16 bg-green-500 border-green-600 text-white rounded-xl font-bold btn-3d text-3xl flex items-center justify-center shadow-sm active:shadow-none active:mt-1 pb-1">
-                            +
-                        </button>
+                    
+                    <input type="number" id="gastos-ing-cant" placeholder="Cnt" class="w-16 h-full bg-white border-2 border-green-200 rounded-xl font-bold text-center text-lg outline-none focus:border-green-400 text-gray-700 placeholder-gray-300">
+                    
+                    <div id="gastos-unit-display" class="w-14 h-full bg-white border-2 border-duoVerde rounded-xl flex items-center justify-center font-extrabold text-duoVerde text-lg shadow-sm select-none">
+                        -
                     </div>
+                    
+                    <button onclick="agregarItemGasto()" class="w-14 h-full bg-green-500 border-green-600 text-white rounded-xl font-bold btn-3d text-2xl flex items-center justify-center shadow-sm active:shadow-none active:mt-1 pb-1">
+                        +
+                    </button>
                 </div>
                 
                 <div id="gastos-lista-items" class="space-y-2 mt-3"></div>
@@ -182,35 +208,29 @@
             await cargarDatosNube();
             
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log('Error SW', err));
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registrado', reg))
+                    .catch(err => console.log('Error SW', err));
             }
         });
 
-        // --- LOGICA INSTALACION APP ---
+        // --- CAPTURA DE EVENTO DE INSTALACION PWA ---
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault(); 
-            deferredPrompt = e;
+            deferredPrompt = e; 
             const btn = document.getElementById('btn-install-pwa');
-            // Cambiar estilo para avisar que está listo
-            btn.classList.remove('text-gray-400', 'border-gray-300');
-            btn.classList.add('text-white', 'bg-duoNaranja', 'border-duoNaranjaShadow', 'animate-bounce');
+            btn.classList.remove('hidden');
+            
+            btn.addEventListener('click', async () => {
+                btn.classList.add('hidden'); 
+                deferredPrompt.prompt(); 
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Resultado instalación:', outcome);
+                deferredPrompt = null;
+            });
         });
 
-        window.instalarAppManual = async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                deferredPrompt = null;
-                // Resetear botón
-                const btn = document.getElementById('btn-install-pwa');
-                btn.classList.add('text-gray-400', 'border-gray-300');
-                btn.classList.remove('text-white', 'bg-duoNaranja', 'border-duoNaranjaShadow', 'animate-bounce');
-            } else {
-                alert("Para instalar: \nEn iPhone: Toca 'Compartir' y luego 'Agregar a Inicio'.\nEn Android: Toca los 3 puntos y 'Instalar aplicación'.");
-            }
-        };
-
-        // --- SYNC ---
+        // --- 4. FUNCIONES DE RED (Sync) ---
         async function cargarDatosNube() {
             try {
                 const { data, error } = await supabaseClient.from('duokitchen').select('content').eq('id', 'casa_principal').single();
@@ -224,7 +244,7 @@
                 document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none');
             } catch (e) { 
                 console.error(e);
-                alert("Error cargando datos.");
+                alert("Error cargando datos. Revisa conexión.");
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
         }
@@ -260,7 +280,7 @@
 
         function renderSelectorIngredientes() {
             const s = document.getElementById('gastos-ing-select'); 
-            s.innerHTML='<option value="">Seleccionar Ingrediente...</option>';
+            s.innerHTML='<option value="">Ingrediente...</option>';
             const sortedKeys = Object.keys(window.DB.alacena).sort();
             sortedKeys.forEach(n=>{ s.innerHTML+=`<option value="${n}">${n}</option>`; });
         }

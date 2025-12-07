@@ -1,6 +1,6 @@
 const CACHE_NAME = 'duokitchen-partner-v1';
 const urlsToCache = [
-  './partner.html',
+  './index.html',
   './manifest.json',
   './icon.png',
   'https://cdn.tailwindcss.com',
@@ -47,4 +47,5 @@ self.addEventListener('fetch', event => {
         return fetch(event.request);
       })
   );
+
 });
